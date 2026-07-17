@@ -16,9 +16,7 @@ import com.autoloud.speaker.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
-    companion object {
-        private const val TAG = "MainActivity"
-    }
+    companion object { private const val TAG = "MainActivity" }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
@@ -29,25 +27,24 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.ANSWER_PHONE_CALLS,
         Manifest.permission.MODIFY_AUDIO_SETTINGS
     ).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
     }.toTypedArray()
 
-    private val requestPermissionLauncher = registerForActivityResult(
+    private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         val allGranted = results.all { it.value }
-        Log.d(TAG, "Permissions result: allGranted=$allGranted, detail=$results")
-        if (allGranted) {
-            enableService()
-            updateToggleState(true)
-        } else {
-            Toast.makeText(
-                this,
-                "All permissions are required for Auto LoudSpeaker to work.",
-                Toast.LENGTH_LONG
-            ).show()
+        Log.d(TAG, "Permissions: $results")
+        if (allGranted) { enableService(); updateToggleState(true) }
+        else {
+            Toast.makeText(this,
+                "All permissions are required. Please grant them in Settings.",
+                Toast.LENGTH_LONG).show()
             updateToggleState(false)
         }
     }
@@ -65,15 +62,9 @@ class MainActivity : AppCompatActivity() {
         binding.toggleSwitch.setOnCheckedChangeListener { _, checked ->
             if (isUpdatingToggle) return@setOnCheckedChangeListener
             if (checked) {
-                if (hasPermissions()) {
-                    enableService()
-                } else {
-                    requestPermissionLauncher.launch(requiredPermissions)
-                    updateToggleState(false)
-                }
-            } else {
-                disableService()
-            }
+                if (hasPermissions()) enableService()
+                else { permissionLauncher.launch(requiredPermissions); updateToggleState(false) }
+            } else disableService()
         }
     }
 
@@ -81,13 +72,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         val enabled = prefs.getBoolean("enabled", false)
         if (enabled && !hasPermissions()) {
-            disableService()
-            updateToggleState(false)
+            disableService(); updateToggleState(false)
             Toast.makeText(this, "Permissions revoked — please re-enable.", Toast.LENGTH_LONG).show()
-        } else {
-            updateToggleState(enabled)
-            updateStatusText(enabled)
-        }
+        } else { updateToggleState(enabled); updateStatusText(enabled) }
     }
 
     private fun hasPermissions() = requiredPermissions.all {
@@ -116,11 +103,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStatusText(enabled: Boolean) {
         binding.statusText.text = if (enabled) "Active" else "Inactive"
-        binding.statusText.setTextColor(
-            ContextCompat.getColor(
-                this,
-                if (enabled) R.color.green_active else R.color.gray_inactive
-            )
-        )
+        binding.statusText.setTextColor(ContextCompat.getColor(this,
+            if (enabled) R.color.green_active else R.color.gray_inactive))
     }
 }

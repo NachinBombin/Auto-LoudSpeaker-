@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Required on Android 12+ for audio routing APIs -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:allowBackup="true"
@@ -27,7 +29,6 @@
             </intent-filter>
         </activity>
 
-        <!-- CallReceiver kept in manifest for structural completeness only -->
         <receiver
             android:name=".CallReceiver"
             android:exported="false"
@@ -46,11 +47,6 @@
             </intent-filter>
         </receiver>
 
-        <!--
-            This service registers a TelephonyCallback (API 31+) or PhoneStateListener (API 26-30)
-            internally. This is the ONLY reliable way to detect call state changes on modern Android
-            without being killed by battery optimization or background start restrictions.
-        -->
         <service
             android:name=".LoudSpeakerService"
             android:exported="false"
