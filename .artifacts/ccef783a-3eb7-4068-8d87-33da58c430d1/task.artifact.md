@@ -1,4 +1,4 @@
-- [x] Update `AndroidManifest.xml` with required permissions
-- [x] Refactor `MainActivity.kt` to use Activity Result API for permissions
-- [x] Verify build with `./gradlew :app:assembleDebug`
-- [x] Create walkthrough
+- [x] Add `BLUETOOTH_CONNECT` to `AndroidManifest.xml`
+- [x] Implement audio control logic in `LoudSpeakerService.kt`
+- [x] Update `CallReceiver.kt` to send commands to the service
+- [x] Verify build and functionality

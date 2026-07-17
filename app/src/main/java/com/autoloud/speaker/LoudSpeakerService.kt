@@ -5,10 +5,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
@@ -18,6 +23,21 @@ class LoudSpeakerService : Service() {
         private const val TAG = "LoudSpeakerService"
         const val CHANNEL_ID = "AutoLoudSpeakerChannel"
         const val NOTIF_ID = 1
+
+        const val ACTION_ENABLE_SPEAKER = "com.autoloud.speaker.ACTION_ENABLE_SPEAKER"
+        const val ACTION_DISABLE_SPEAKER = "com.autoloud.speaker.ACTION_DISABLE_SPEAKER"
+
+        private const val INITIAL_DELAY_MS = 1500L
+        private const val RETRY_DELAY_MS = 1000L
+        private const val MAX_RETRIES = 3
+    }
+
+    private lateinit var audioManager: AudioManager
+    private val handler = Handler(Looper.getMainLooper())
+
+    override fun onCreate() {
+        super.onCreate()
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -34,10 +54,75 @@ class LoudSpeakerService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start foreground service", e)
-            // On Android 14, this might happen if MANAGE_OWN_CALLS is missing or app is backgrounded
             stopSelf()
+            return START_NOT_STICKY
         }
+
+        when (intent?.action) {
+            ACTION_ENABLE_SPEAKER -> {
+                Log.d(TAG, "Action received: ENABLE_SPEAKER")
+                enableSpeakerWithRetry(0)
+            }
+            ACTION_DISABLE_SPEAKER -> {
+                Log.d(TAG, "Action received: DISABLE_SPEAKER")
+                restoreAudio()
+            }
+        }
+
         return START_STICKY
+    }
+
+    private fun enableSpeakerWithRetry(attempt: Int) {
+        val delay = if (attempt == 0) INITIAL_DELAY_MS else RETRY_DELAY_MS
+        handler.postDelayed({
+            try {
+                Log.d(TAG, "Attempting to enable speakerphone (attempt ${attempt + 1})")
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+
+                val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val devices = audioManager.availableCommunicationDevices
+                    val speakerDevice = devices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                    if (speakerDevice != null) {
+                        audioManager.setCommunicationDevice(speakerDevice)
+                    } else {
+                        Log.e(TAG, "Built-in speaker device not found!")
+                        false
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn = true
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn
+                }
+
+                if (success) {
+                    Log.d(TAG, "Speakerphone enabled successfully")
+                } else if (attempt < MAX_RETRIES) {
+                    Log.w(TAG, "Speakerphone activation failed/deferred, retrying...")
+                    enableSpeakerWithRetry(attempt + 1)
+                } else {
+                    Log.e(TAG, "Failed to enable speakerphone after $MAX_RETRIES attempts")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception during speaker activation", e)
+            }
+        }, delay)
+    }
+
+    private fun restoreAudio() {
+        handler.removeCallbacksAndMessages(null)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.isSpeakerphoneOn = false
+            }
+            audioManager.mode = AudioManager.MODE_NORMAL
+            Log.d(TAG, "Audio mode restored to normal")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to restore audio mode", e)
+        }
     }
 
     private fun createNotificationChannel() {
