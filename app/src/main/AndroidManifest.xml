@@ -27,11 +27,12 @@
             </intent-filter>
         </activity>
 
+        <!-- CallReceiver kept in manifest for structural completeness only -->
         <receiver
             android:name=".CallReceiver"
-            android:exported="true"
+            android:exported="false"
             android:enabled="true">
-            <intent-filter android:priority="999">
+            <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
@@ -45,7 +46,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- foreground service keeps process alive so receiver is never killed mid-call -->
+        <!--
+            This service registers a TelephonyCallback (API 31+) or PhoneStateListener (API 26-30)
+            internally. This is the ONLY reliable way to detect call state changes on modern Android
+            without being killed by battery optimization or background start restrictions.
+        -->
         <service
             android:name=".LoudSpeakerService"
             android:exported="false"

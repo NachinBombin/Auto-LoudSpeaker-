@@ -11,8 +11,8 @@ android {
         applicationId = "com.autoloud.speaker"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "3.0"
     }
 
     buildTypes {
@@ -39,6 +39,4 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
-    // Coroutines needed for goAsync() pattern in BroadcastReceiver
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
