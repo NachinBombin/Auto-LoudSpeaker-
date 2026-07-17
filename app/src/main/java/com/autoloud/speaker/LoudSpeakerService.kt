@@ -51,8 +51,8 @@ class LoudSpeakerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             communicationDeviceListener?.let {
                 audioManager.addOnCommunicationDeviceChangedListener(
