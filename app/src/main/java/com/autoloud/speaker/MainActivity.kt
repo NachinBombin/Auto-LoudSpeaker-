@@ -6,29 +6,47 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.autoloud.speaker.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
 
     private val permissionsList = mutableListOf(
         Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.ANSWER_PHONE_CALLS,
-        Manifest.permission.MODIFY_AUDIO_SETTINGS
+        Manifest.permission.ANSWER_PHONE_CALLS
     ).apply {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
     }.toTypedArray()
 
-    private val requestCodePermissions = 100
+    private var isUpdatingToggle = false
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val allGranted = results.all { it.value }
+        Log.d(TAG, "Permissions result: allGranted=$allGranted")
+        if (allGranted) {
+            updateToggleState(true)
+            enableService()
+        } else {
+            Toast.makeText(this, "Permissions required to enable Auto LoudSpeaker", Toast.LENGTH_LONG).show()
+            updateToggleState(false)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,21 +56,31 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("AutoLoudSpeaker", MODE_PRIVATE)
 
         val isEnabled = prefs.getBoolean("enabled", false)
-        binding.toggleSwitch.isChecked = isEnabled
+        updateToggleState(isEnabled)
         updateStatusText(isEnabled)
 
         binding.toggleSwitch.setOnCheckedChangeListener { _, checked ->
+            if (isUpdatingToggle) return@setOnCheckedChangeListener
+            Log.d(TAG, "Toggle changed to: $checked")
+
             if (checked) {
                 if (hasPermissions()) {
                     enableService()
                 } else {
-                    requestPermissions()
-                    binding.toggleSwitch.isChecked = false
+                    Log.d(TAG, "Missing permissions, requesting...")
+                    requestPermissionLauncher.launch(permissionsList)
+                    updateToggleState(false)
                 }
             } else {
                 disableService()
             }
         }
+    }
+
+    private fun updateToggleState(enabled: Boolean) {
+        isUpdatingToggle = true
+        binding.toggleSwitch.isChecked = enabled
+        isUpdatingToggle = false
     }
 
     private fun hasPermissions(): Boolean {
@@ -61,27 +89,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestPermissions() {
-        ActivityCompat.requestPermissions(this, permissionsList, requestCodePermissions)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == requestCodePermissions) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                binding.toggleSwitch.isChecked = true
-                enableService()
-            } else {
-                Toast.makeText(this, "Permissions required to enable Auto LoudSpeaker", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
     private fun enableService() {
+        Log.d(TAG, "Enabling service")
         prefs.edit { putBoolean("enabled", true) }
         updateStatusText(true)
         val intent = Intent(this, LoudSpeakerService::class.java)
@@ -89,6 +98,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun disableService() {
+        Log.d(TAG, "Disabling service")
         prefs.edit { putBoolean("enabled", false) }
         updateStatusText(false)
         stopService(Intent(this, LoudSpeakerService::class.java))
@@ -108,9 +118,11 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // Reflect permission revocation
         val enabled = prefs.getBoolean("enabled", false)
+        Log.d(TAG, "onResume: enabled=$enabled")
         if (enabled && !hasPermissions()) {
+            Log.d(TAG, "onResume: permissions lost, disabling service")
             disableService()
-            binding.toggleSwitch.isChecked = false
+            updateToggleState(false)
             Toast.makeText(this, "Permissions were revoked. Please re-enable.", Toast.LENGTH_LONG).show()
         }
     }

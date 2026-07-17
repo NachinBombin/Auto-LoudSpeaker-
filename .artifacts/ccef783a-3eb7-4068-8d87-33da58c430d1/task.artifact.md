@@ -1,3 +1,4 @@
-- [x] Update `AndroidManifest.xml` with `MANAGE_OWN_CALLS`
-- [x] Add try-catch and logging to `LoudSpeakerService.kt`
-- [x] Verify build
+- [x] Update `AndroidManifest.xml` with required permissions
+- [x] Refactor `MainActivity.kt` to use Activity Result API for permissions
+- [x] Verify build with `./gradlew :app:assembleDebug`
+- [x] Create walkthrough
