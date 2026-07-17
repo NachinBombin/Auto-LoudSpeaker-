@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.autoloud.speaker.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -17,12 +18,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
 
-    private val PERMISSIONS = arrayOf(
+    private val permissionsList = mutableListOf(
         Manifest.permission.READ_PHONE_STATE,
         Manifest.permission.ANSWER_PHONE_CALLS,
         Manifest.permission.MODIFY_AUDIO_SETTINGS
-    )
-    private val PERMISSION_REQUEST = 100
+    ).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }.toTypedArray()
+
+    private val requestCodePermissions = 100
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,13 +56,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasPermissions(): Boolean {
-        return PERMISSIONS.all {
+        return permissionsList.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
     }
 
     private fun requestPermissions() {
-        ActivityCompat.requestPermissions(this, PERMISSIONS, PERMISSION_REQUEST)
+        ActivityCompat.requestPermissions(this, permissionsList, requestCodePermissions)
     }
 
     override fun onRequestPermissionsResult(
@@ -65,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST) {
+        if (requestCode == requestCodePermissions) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 binding.toggleSwitch.isChecked = true
                 enableService()
@@ -76,18 +82,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enableService() {
-        prefs.edit().putBoolean("enabled", true).apply()
+        prefs.edit { putBoolean("enabled", true) }
         updateStatusText(true)
         val intent = Intent(this, LoudSpeakerService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        startForegroundService(intent)
     }
 
     private fun disableService() {
-        prefs.edit().putBoolean("enabled", false).apply()
+        prefs.edit { putBoolean("enabled", false) }
         updateStatusText(false)
         stopService(Intent(this, LoudSpeakerService::class.java))
     }

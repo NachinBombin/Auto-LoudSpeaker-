@@ -3,7 +3,9 @@ package com.autoloud.speaker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.telephony.TelephonyManager
@@ -30,7 +32,17 @@ class CallReceiver : BroadcastReceiver() {
                 try {
                     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                     audioManager.mode = AudioManager.MODE_IN_CALL
-                    audioManager.isSpeakerphoneOn = true
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val devices = audioManager.availableCommunicationDevices
+                        val speakerDevice = devices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                        if (speakerDevice != null) {
+                            audioManager.setCommunicationDevice(speakerDevice)
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        audioManager.isSpeakerphoneOn = true
+                    }
                     Log.d(TAG, "Speakerphone enabled")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to enable speakerphone", e)
@@ -40,7 +52,12 @@ class CallReceiver : BroadcastReceiver() {
             // Call ended — restore audio mode
             try {
                 val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                audioManager.isSpeakerphoneOn = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    audioManager.clearCommunicationDevice()
+                } else {
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn = false
+                }
                 audioManager.mode = AudioManager.MODE_NORMAL
                 Log.d(TAG, "Audio mode restored")
             } catch (e: Exception) {

@@ -1,0 +1,3 @@
+- [x] Update `AndroidManifest.xml` with `MANAGE_OWN_CALLS`
+- [x] Add try-catch and logging to `LoudSpeakerService.kt`
+- [x] Verify build
