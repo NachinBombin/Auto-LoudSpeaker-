@@ -39,4 +39,6 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
+    // Coroutines needed for goAsync() pattern in BroadcastReceiver
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
