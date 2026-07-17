@@ -4,12 +4,11 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Required on Android 12+ for audio routing APIs -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:allowBackup="true"
@@ -29,19 +28,13 @@
             </intent-filter>
         </activity>
 
-        <receiver
-            android:name=".CallReceiver"
-            android:exported="false"
-            android:enabled="true">
+        <receiver android:name=".CallReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".BootReceiver"
-            android:exported="true"
-            android:enabled="true">
+        <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
@@ -51,6 +44,27 @@
             android:name=".LoudSpeakerService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
+
+        <!--
+            InCallService: the ONLY reliable API to control call audio routing
+            on Android 10+ without being the default dialer.
+            Telecom binds this automatically for every call when CALL_COMPANION role is held.
+            The metadata tag is REQUIRED for the system to recognize this as an InCallService.
+        -->
+        <service
+            android:name=".AutoSpeakerInCallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="false" />
+            <meta-data
+                android:name="android.telecom.INCALL_SERVICE_RINGING"
+                android:value="false" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
 
     </application>
 

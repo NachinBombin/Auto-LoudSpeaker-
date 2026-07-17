@@ -11,13 +11,11 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             val prefs = context.getSharedPreferences("AutoLoudSpeaker", Context.MODE_PRIVATE)
             if (prefs.getBoolean("enabled", false)) {
-                Log.d("BootReceiver", "Boot detected, restarting LoudSpeakerService")
-                val serviceIntent = Intent(context, LoudSpeakerService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+                Log.d("BootReceiver", "Restarting service after boot")
+                val si = Intent(context, LoudSpeakerService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    context.startForegroundService(si)
+                else context.startService(si)
             }
         }
     }
